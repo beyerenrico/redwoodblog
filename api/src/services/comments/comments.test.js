@@ -1,3 +1,5 @@
+import { AuthenticationError, ForbiddenError } from '@redwoodjs/graphql-server'
+
 import { db } from 'src/lib/db'
 
 import { comments, createComment, deleteComment } from './comments'
@@ -20,9 +22,7 @@ describe('comments', () => {
       input: {
         name: 'Billy Bob',
         body: 'What is your favorite tree bark?',
-        post: {
-          connect: { id: scenario.post.bark.id },
-        },
+        postId: scenario.post.bark.id,
       },
     })
 
@@ -32,18 +32,41 @@ describe('comments', () => {
     expect(comment.createdAt).not.toEqual(null)
   })
 
-  scenario('deletes a comment', async (scenario) => {
-    const initialComments = await comments({
-      postId: scenario.comment.jane.postId,
+  scenario('allows a moderator to delete a comment', async (scenario) => {
+    mockCurrentUser({ roles: ['moderator'] })
+
+    const comment = await deleteComment({
+      id: scenario.comment.jane.id,
     })
-    const comment = initialComments[0]
+    expect(comment.id).toEqual(scenario.comment.jane.id)
 
-    await deleteComment({ id: comment.id })
-
-    const commentsAfterDeletion = await comments({
-      postId: scenario.comment.jane.postId,
-    })
-
-    expect(commentsAfterDeletion.length).toEqual(initialComments.length - 1)
+    const result = await comments({ postId: scenario.comment.jane.id })
+    expect(result.length).toEqual(0)
   })
+
+  scenario(
+    'does not allow a non-moderator to delete a comment',
+    async (scenario) => {
+      mockCurrentUser({ roles: 'user' })
+
+      expect(() =>
+        deleteComment({
+          id: scenario.comment.jane.id,
+        })
+      ).toThrow(ForbiddenError)
+    }
+  )
+
+  scenario(
+    'does not allow a logged out user to delete a comment',
+    async (scenario) => {
+      mockCurrentUser(null)
+
+      expect(() =>
+        deleteComment({
+          id: scenario.comment.jane.id,
+        })
+      ).toThrow(AuthenticationError)
+    }
+  )
 })
