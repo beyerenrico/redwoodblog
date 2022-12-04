@@ -1,11 +1,19 @@
+import { db } from 'src/lib/db'
+
 import { comments, createComment, deleteComment } from './comments'
 
 describe('comments', () => {
-  scenario('returns all comments', async (scenario) => {
-    const result = await comments()
-
-    expect(result.length).toEqual(Object.keys(scenario.comment).length)
-  })
+  scenario(
+    'returns all comments for a single post from the database',
+    async (scenario) => {
+      const result = await comments({ postId: scenario.comment.jane.postId })
+      const post = await db.post.findUnique({
+        where: { id: scenario.comment.jane.postId },
+        include: { comments: true },
+      })
+      expect(result.length).toEqual(post.comments.length)
+    }
+  )
 
   scenario('postOnly', 'creates a new comment', async (scenario) => {
     const comment = await createComment({
@@ -25,15 +33,17 @@ describe('comments', () => {
   })
 
   scenario('deletes a comment', async (scenario) => {
-    const initialComments = await comments()
+    const initialComments = await comments({
+      postId: scenario.comment.jane.postId,
+    })
     const comment = initialComments[0]
 
     await deleteComment({ id: comment.id })
 
-    const commentsAfterDeletion = await comments()
+    const commentsAfterDeletion = await comments({
+      postId: scenario.comment.jane.postId,
+    })
 
-    expect(commentsAfterDeletion.length).toEqual(
-      Object.keys(scenario.comment).length - 1
-    )
+    expect(commentsAfterDeletion.length).toEqual(initialComments.length - 1)
   })
 })
