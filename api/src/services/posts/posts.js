@@ -12,7 +12,7 @@ export const post = ({ id }) => {
 
 export const createPost = ({ input }) => {
   return db.post.create({
-    data: input,
+    data: { ...input, userId: context.currentUser.id },
   })
 }
 
@@ -30,6 +30,5 @@ export const deletePost = ({ id }) => {
 }
 
 export const Post = {
-  user: (_obj, { root }) =>
-    db.post.findFirst({ where: { id: root.id } }).user(),
+  user: (_obj, { root }) => db.user.findFirst({ where: { id: root.userId } }),
 }

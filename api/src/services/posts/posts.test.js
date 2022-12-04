@@ -14,6 +14,11 @@ describe('posts', () => {
   })
 
   scenario('creates a post', async () => {
+    mockCurrentUser({
+      id: 1,
+      roles: 'admin',
+    })
+
     const result = await createPost({
       input: { title: 'String', body: 'String' },
     })
